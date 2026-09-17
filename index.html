@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>NOCTURNE — Interactive Design Studio</title>
+  <meta name="description" content="Three.jsで構築したインタラクティブなWebGL体験。屈折するガラス、粒子、スクロール連動のディストーション。" />
+  <meta name="theme-color" content="#05060a" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='42' fill='%23ff4d29'/></svg>" />
+</head>
+<body class="is-loading">
+  <canvas id="webgl" aria-hidden="true"></canvas>
+
+  <div class="cursor" data-cursor aria-hidden="true">
+    <div class="cursor__dot"></div>
+    <div class="cursor__ring"><span class="cursor__label"></span></div>
+  </div>
+
+  <div class="preloader" data-preloader>
+    <div class="preloader__inner">
+      <span class="preloader__name">NOCTURNE<sup>®</sup></span>
+      <span class="preloader__count" data-preloader-count>0</span>
+    </div>
+    <div class="preloader__bar"><i data-preloader-bar></i></div>
+  </div>
+
+  <header class="nav">
+    <a class="nav__logo" href="#top" data-magnetic>NOCTURNE<sup>®</sup></a>
+    <nav class="nav__links">
+      <a href="#work" data-magnetic>Work</a>
+      <a href="#studio" data-magnetic>Studio</a>
+      <a href="#contact" data-magnetic>Contact</a>
+    </nav>
+    <span class="nav__time" data-clock>--:--:-- JST</span>
+  </header>
+
+  <main class="scroll" data-scroll-container>
+    <section class="hero" id="top">
+      <h1 class="hero__title">
+        <span class="line" data-split>Interactive</span>
+        <span class="line" data-split><em>Digital</em> Craft</span>
+        <span class="line" data-split>Studio</span>
+      </h1>
+      <p class="hero__sub" data-reveal>私たちは、ブラウザの中に触れられる物質感をつくります。<br />WebGL・リアルタイムレンダリング・モーションデザイン。</p>
+      <div class="hero__scroll" data-reveal><span></span>Scroll to explore</div>
+    </section>
+
+    <section class="intro" id="studio">
+      <p class="intro__lead" data-split-words>
+        ガラスのような屈折、粒子のうねり、スクロールに追従する歪み。
+        すべてをリアルタイムのGPU演算で描画し、1本の連続した体験として設計しています。
+      </p>
+      <div class="intro__grid">
+        <article data-reveal><h3>01 / Real-time 3D</h3><p>Three.jsとカスタムGLSLによる物理ベースの質感表現。屈折・虹彩・被写界深度。</p></article>
+        <article data-reveal><h3>02 / Motion</h3><p>慣性スクロールとスプリング補間。すべての動きに重さと減衰を与えます。</p></article>
+        <article data-reveal><h3>03 / Performance</h3><p>インスタンシングとGPUパーティクルで、モバイルでも60fpsを目標に最適化。</p></article>
+      </div>
+    </section>
+
+    <section class="work" id="work">
+      <h2 class="section-title" data-split>Selected Work</h2>
+      <ul class="work__list" data-gallery>
+        <li class="work__item" data-project data-title="Aurora" data-color="#ff4d29" data-color-b="#2b1055">
+          <span class="work__index">01</span>
+          <h3 class="work__name" data-magnetic>Aurora Commerce</h3>
+          <span class="work__meta">WebGL / Art Direction — 2025</span>
+        </li>
+        <li class="work__item" data-project data-title="Nebula" data-color="#5f6bff" data-color-b="#06111f">
+          <span class="work__index">02</span>
+          <h3 class="work__name" data-magnetic>Nebula Systems</h3>
+          <span class="work__meta">Product Site / 3D — 2025</span>
+        </li>
+        <li class="work__item" data-project data-title="Kintsugi" data-color="#f5b942" data-color-b="#180d05">
+          <span class="work__index">03</span>
+          <h3 class="work__name" data-magnetic>Kintsugi Museum</h3>
+          <span class="work__meta">Interactive Exhibition — 2024</span>
+        </li>
+        <li class="work__item" data-project data-title="Tidal" data-color="#2ee6c5" data-color-b="#031a1a">
+          <span class="work__index">04</span>
+          <h3 class="work__name" data-magnetic>Tidal Audio</h3>
+          <span class="work__meta">Brand Experience — 2024</span>
+        </li>
+      </ul>
+    </section>
+
+    <section class="capability">
+      <h2 class="section-title" data-split>Capabilities</h2>
+      <p class="capability__note" data-reveal>スクロールに応じて、粒子が球体・トーラス・波へと姿を変えます。</p>
+      <ul class="capability__tags">
+        <li data-reveal>Creative Direction</li>
+        <li data-reveal>WebGL / GLSL</li>
+        <li data-reveal>Motion Design</li>
+        <li data-reveal>Front-end Architecture</li>
+        <li data-reveal>Prototyping</li>
+      </ul>
+    </section>
+
+    <footer class="contact" id="contact">
+      <h2 class="contact__title" data-split>Let's build<br />something rare.</h2>
+      <a class="contact__mail" href="mailto:hello@nocturne.studio" data-magnetic data-cursor-label="Send">hello@nocturne.studio</a>
+      <div class="contact__bottom">
+        <span>© 2026 NOCTURNE Studio</span>
+        <span>Built with Three.js</span>
+      </div>
+    </footer>
+  </main>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
