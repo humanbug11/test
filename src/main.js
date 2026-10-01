@@ -81,6 +81,9 @@ async function boot() {
     return
   }
 
+  // プリローダが開いたら、ガラスの物体を画面上から降らせる
+  preloader.onReveal = () => stage.glass.release()
+
   new WorkList(stage).init()
   preloader.set(0.85)
 

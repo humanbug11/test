@@ -38,6 +38,8 @@ export class Stage {
     this._createWorld()
     this._createComposer()
     this.resize()
+    // 物理（WASM）は画面サイズ確定後に初期化。壁の位置に画面寸法が必要なため
+    await this.glass.initPhysics()
     this._bindEvents()
     // 初回フレームのシェーダコンパイルを先に済ませ、開幕のカクつきを防ぐ
     await this.renderer.compileAsync(this.scene, this.camera)

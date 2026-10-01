@@ -12,6 +12,8 @@ export class Preloader {
     this.value = 0
     this.target = 0
     this.done = false
+    /** プリローダが開き始めた瞬間に呼ばれる（物体を降らせる合図など） */
+    this.onReveal = null
     this._last = performance.now()
   }
 
@@ -46,6 +48,7 @@ export class Preloader {
       this.done = true
       this.el.classList.add('is-done')
       document.body.classList.remove('is-loading')
+      this.onReveal?.()
       // ヒーローの行送り演出を開始
       requestAnimationFrame(() => {
         document.querySelectorAll('.hero .split').forEach((el, i) => {
