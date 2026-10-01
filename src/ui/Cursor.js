@@ -11,6 +11,7 @@ export class Cursor {
     this.pos = { x: 0, y: 0 }
     this.ringPos = { x: 0, y: 0 }
     this.enabled = state.pointer.hasFinePointer
+    this._mode = ''
   }
 
   init() {
@@ -31,6 +32,14 @@ export class Cursor {
 
   update(dt) {
     if (!this.enabled) return
+
+    // ガラス球の上では「Drag」、掴んでいる間は「Drop」を表示
+    const mode = state.pointer.grabbing ? 'Drop' : state.pointer.overObject ? 'Drag' : ''
+    if (mode !== this._mode) {
+      this._mode = mode
+      this.el.classList.toggle('is-grab', !!mode)
+      if (mode && !this.el.classList.contains('is-active')) this.label.textContent = mode
+    }
     this.pos.x = damp(this.pos.x, state.pointer.x, 0.5, dt)
     this.pos.y = damp(this.pos.y, state.pointer.y, 0.5, dt)
     this.ringPos.x = damp(this.ringPos.x, state.pointer.x, 0.18, dt)

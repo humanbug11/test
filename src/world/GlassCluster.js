@@ -16,8 +16,13 @@ const GRAVITY = 0       // 無重力空間
 const STEP = 1 / 60
 const WALL = 2          // 壁の半厚み（貫通防止のため厚めに取る）
 const DRIFT_MIN = 0.6   // これより遅くなったら、漂い続けるよう軽く押す
-const SPEED_MAX = 12    // カーソルやクリックで加速しすぎないための上限
+const SPEED_MAX = 16    // カーソルやクリックで加速しすぎないための上限（投げた時の最高速も兼ねる）
 const POINTER_R = 0.42  // カーソルの当たり半径（ワールド単位）
+const GRAB_RANGE = 1.15 // 球の半径に対する掴める範囲の倍率
+const GRAB_STIFFNESS = 18 // 掴んだ物体がカーソルへ寄る強さ（1/秒）
+const THROW_WINDOW = 0.1  // 離した瞬間の速度を測る時間幅（秒）
+const CLICK_MAX_TIME = 0.22 // これ以内かつほぼ動かなければ「クリック」とみなす（秒）
+const CLICK_MAX_MOVE = 8    // 同、移動量（px）
 
 /**
  * ヒーローの屈折オブジェクト群。Rapier（WASM）の剛体物理で動かす無重力空間。
@@ -27,7 +32,10 @@ const POINTER_R = 0.42  // カーソルの当たり半径（ワールド単位�
  *   これにより壁の位置が画面の端と厳密に一致する。
  * - 当たり判定は各メッシュの外接球に近い球。球どうしの衝突、摩擦による回転が連鎖する。
  * - 減衰をほぼ0にして運動を保ち、遅くなりすぎたら軽く押して漂い続けさせる。
- * - カーソルは運動学ボディとして物体を突き飛ばし、クリックは放射状の衝撃を与える。
+ * - 物体はドラッグで掴んで投げられる。掴んでいる間は速度でカーソルへ引き寄せるので、
+ *   他の物体や壁とは普通に衝突し、離した瞬間の速度がそのまま投げる速さになる。
+ * - 何もない所を押しながら動かすと、カーソルが運動学ボディとして物体を掃く。
+ *   短いクリックは放射状の衝撃を与える。
  * - Rapierは動的importで別チャンクにし、初回描画をブロックしない。
  */
 export class GlassCluster {
@@ -41,6 +49,10 @@ export class GlassCluster {
     this.walls = []
     this.pointerBody = null
     this.pointerActive = false
+    this.grab = null        // { item, ox, oy } 掴んでいる物体とカーソルとのずれ
+    this.samples = []       // 投げる速度を求めるためのカーソル軌跡
+    this.press = null       // 空き地を押した時の情報（クリック判定用）
+    this._pw = new THREE.Vector3()
     this.released = false
     this.acc = 0
     this.frame = 0
@@ -180,8 +192,14 @@ export class GlassCluster {
     )
     this.world.createCollider(R.ColliderDesc.ball(POINTER_R).setRestitution(0.2), this.pointerBody)
 
-    this._onPointerDown = (e) => this._burst(e.clientX, e.clientY)
-    window.addEventListener('pointerdown', this._onPointerDown)
+    this._onDown = (e) => this._handleDown(e)
+    this._onUp = (e) => this._handleUp(e)
+    this._onSelect = (e) => this.grab && e.preventDefault()
+    window.addEventListener('pointerdown', this._onDown)
+    window.addEventListener('pointerup', this._onUp)
+    window.addEventListener('pointercancel', this._onUp)
+    window.addEventListener('blur', this._onUp)
+    document.addEventListener('selectstart', this._onSelect)
 
     this._syncMeshes()
   }
@@ -219,6 +237,117 @@ export class GlassCluster {
   /** ページ表示（プリローダ終了）と同時に動き出す */
   release() {
     this.released = true
+  }
+
+  /** カーソル位置にある掴める物体のうち、最も近いもの */
+  _pick(px, py) {
+    const p = this.stage.pxToWorld(px, py, this._pw)
+    let best = null
+    let bestD = Infinity
+    for (const item of this.items) {
+      const t = item.body.translation()
+      const d = Math.hypot(t.x - p.x, t.y - p.y)
+      if (d < this._radius(item) * GRAB_RANGE && d < bestD) {
+        best = { item, ox: t.x - p.x, oy: t.y - p.y }
+        bestD = d
+      }
+    }
+    return best
+  }
+
+  _handleDown(e) {
+    if (!this.world || !this.released || e.button > 0) return
+    // リンク・ボタン上の操作は邪魔しない。タッチはスクロールと競合するので対象外
+    if (e.target.closest?.('a, button, input, textarea, [data-project]')) return
+
+    if (e.pointerType !== 'touch') {
+      const hit = this._pick(e.clientX, e.clientY)
+      if (hit) {
+        this.grab = hit
+        this.samples.length = 0
+        state.pointer.grabbing = true
+        document.body.classList.add('is-dragging')
+        return
+      }
+    }
+    this.press = { t: state.time.elapsed, x: e.clientX, y: e.clientY }
+  }
+
+  _handleUp(e) {
+    if (this.grab) this._release()
+
+    // 短く動かさずに離した場合は「クリック」 → 放射状の衝撃
+    const press = this.press
+    this.press = null
+    if (
+      press &&
+      e.clientX !== undefined &&
+      state.time.elapsed - press.t < CLICK_MAX_TIME &&
+      Math.hypot(e.clientX - press.x, e.clientY - press.y) < CLICK_MAX_MOVE
+    ) {
+      this._burst(e.clientX, e.clientY)
+    }
+  }
+
+  /** 掴んでいる物体を離す。直近のカーソル速度をそのまま投げる速度にする */
+  _release() {
+    const { item } = this.grab
+    const now = state.time.elapsed
+    const recent = this.samples.filter((s) => now - s.t <= THROW_WINDOW)
+    let vx = 0
+    let vy = 0
+    if (recent.length >= 2) {
+      const a = recent[0]
+      const b = recent[recent.length - 1]
+      const dt = b.t - a.t
+      if (dt > 1e-4) {
+        vx = (b.x - a.x) / dt
+        vy = (b.y - a.y) / dt
+      }
+    }
+    const sp = Math.hypot(vx, vy)
+    if (sp > SPEED_MAX) {
+      vx *= SPEED_MAX / sp
+      vy *= SPEED_MAX / sp
+    }
+    item.body.setLinvel({ x: vx, y: vy, z: 0 }, true)
+    // 投げた向きに応じて、回転も少し与える
+    item.body.setAngvel({ x: -vy * 0.25, y: vx * 0.25, z: -vx * 0.15 }, true)
+
+    this.grab = null
+    this.samples.length = 0
+    state.pointer.grabbing = false
+    document.body.classList.remove('is-dragging')
+  }
+
+  /** 掴んでいる間：カーソルへ向かう速度を毎フレーム与える（衝突は物理に任せる） */
+  _updateGrab() {
+    const { item, ox, oy } = this.grab
+    const { width: W, height: H } = this.stage.viewport
+    const r = this._radius(item)
+    const p = this.stage.pxToWorld(state.pointer.x, state.pointer.y, this._pw)
+    const tx = clamp(p.x + ox, -W / 2 + r, W / 2 - r)
+    const ty = clamp(p.y + oy, -H / 2 + r, H / 2 - r)
+
+    const t = item.body.translation()
+    let vx = (tx - t.x) * GRAB_STIFFNESS
+    let vy = (ty - t.y) * GRAB_STIFFNESS
+    const sp = Math.hypot(vx, vy)
+    if (sp > SPEED_MAX * 1.5) {
+      vx *= (SPEED_MAX * 1.5) / sp
+      vy *= (SPEED_MAX * 1.5) / sp
+    }
+    item.body.setLinvel({ x: vx, y: vy, z: 0 }, true)
+
+    // 投げる速度の算出用に、カーソル自身の軌跡を記録する
+    this.samples.push({ t: state.time.elapsed, x: p.x, y: p.y })
+    if (this.samples.length > 30) this.samples.shift()
+  }
+
+  /** 掴める物体の上にいるかを判定（カスタムカーソルの表示用） */
+  _updateHover() {
+    if (!state.pointer.hasFinePointer) return
+    state.pointer.overObject = !!this._pick(state.pointer.x, state.pointer.y)
   }
 
   /** クリック位置から放射状の衝撃を与える */
@@ -292,7 +421,8 @@ export class GlassCluster {
   }
 
   _updatePointer(dt) {
-    const active = state.pointer.hasFinePointer || state.pointer.down
+    // 何もない所を押している間だけ、カーソルが物体を掃く（ホバーだけで逃げると掴めないため）
+    const active = state.pointer.down && !this.grab && !!this.press
     if (!active || state.quality.reducedMotion) {
       if (this.pointerActive) {
         this.pointerBody.setTranslation({ x: 999, y: 999, z: 0 }, true)
@@ -321,6 +451,8 @@ export class GlassCluster {
 
     if (!this.world || !this.released) return
 
+    if (this.grab) this._updateGrab()
+    else this._updateHover()
     this._updatePointer(dt)
 
     // 固定タイムステップで安定させる（重いフレームでも最大4回まで）
@@ -339,7 +471,11 @@ export class GlassCluster {
   }
 
   dispose() {
-    window.removeEventListener('pointerdown', this._onPointerDown)
+    window.removeEventListener('pointerdown', this._onDown)
+    window.removeEventListener('pointerup', this._onUp)
+    window.removeEventListener('pointercancel', this._onUp)
+    window.removeEventListener('blur', this._onUp)
+    document.removeEventListener('selectstart', this._onSelect)
     this.items.forEach(({ mesh }) => mesh.geometry.dispose())
     this.material.dispose()
     this.world?.free()

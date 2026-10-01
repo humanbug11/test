@@ -290,7 +290,8 @@ section, .contact { padding: 0 var(--pad); position: relative; }
   place-items: center;
   transition: width 0.45s var(--ease), height 0.45s var(--ease), background 0.45s var(--ease);
 }
-.cursor.is-active .cursor__ring { width: 86px; height: 86px; background: rgba(255, 255, 255, 0.08); }
+.cursor.is-active .cursor__ring,
+.cursor.is-grab .cursor__ring { width: 86px; height: 86px; background: rgba(255, 255, 255, 0.08); }
 .cursor__label {
   font-size: 0.6rem;
   letter-spacing: 0.16em;
@@ -298,7 +299,11 @@ section, .contact { padding: 0 var(--pad); position: relative; }
   opacity: 0;
   transition: opacity 0.3s var(--ease);
 }
-.cursor.is-active .cursor__label { opacity: 1; }
+.cursor.is-active .cursor__label,
+.cursor.is-grab .cursor__label { opacity: 1; }
+
+/* ドラッグ中はテキスト選択を抑止 */
+body.is-dragging { user-select: none; -webkit-user-select: none; cursor: grabbing; }
 @media (hover: none) { .cursor { display: none; } }
 
 /* --- preloader ---------------------------------------------------- */

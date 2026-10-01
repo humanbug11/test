@@ -11,6 +11,8 @@ export const state = {
     rawNx: 0, rawNy: 0,    // -1..1（生値）
     speed: 0,
     down: false,
+    overObject: false,     // カーソルが掴めるガラス球の上にある
+    grabbing: false,       // ガラス球を掴んでいる最中
     hasFinePointer: true
   },
   scroll: {
