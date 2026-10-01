@@ -10,7 +10,8 @@
   --accent: #ff4d29;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --pad: clamp(1.25rem, 4vw, 4rem);
-  --font: "Helvetica Neue", "Inter", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  /* 英数字は Inter、日本語は文字単位でフォールバック */
+  --font: "Inter Variable", "Inter", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", Meiryo, system-ui, sans-serif;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
